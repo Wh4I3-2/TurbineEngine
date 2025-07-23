@@ -29,7 +29,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Queue;
 import java.util.Random;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -89,6 +91,8 @@ public class Main {
 		return this.window;
 	}
 	public Scene scene;
+
+	public static final Queue<Runnable> glQueue = new ConcurrentLinkedQueue<>();
 
 	private void init() {
 		// Setup an error callback. The default implementation
@@ -218,12 +222,7 @@ public class Main {
 
 		final ViewportMaterial viewportMaterial = new ViewportMaterial();
 
-		executor = Executors.newScheduledThreadPool(1);
-		executor.scheduleAtFixedRate(() -> {
-			if (glfwWindowShouldClose(instance().window.window())) {
-				terminate();
-			}
-
+		while (!glfwWindowShouldClose(instance().window.window())){
 			Main.frame++;
 			Main.fpsFrame++;
 
@@ -233,6 +232,9 @@ public class Main {
 
 			glViewport(0, 0, Window.VIEWPORT_WIDTH, Window.VIEWPORT_HEIGHT);
 
+			while (!glQueue.isEmpty()) {
+				glQueue.poll().run(); // Run GL-safe actions
+			}
 
 			Renderer.instance().clear();
 			instance().scene.update();
@@ -275,8 +277,8 @@ public class Main {
 
 			glfwSwapBuffers(instance().window.window()); // swap the color buffers
 			glfwPollEvents();
+		}
 
-			glfwMakeContextCurrent(0);
-		}, 1, 1, TimeUnit.MILLISECONDS);
+		terminate();
 	}
 }

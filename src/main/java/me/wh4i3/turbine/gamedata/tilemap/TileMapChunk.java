@@ -31,6 +31,8 @@ public class TileMapChunk {
 		VERTEX_BUFFER_LAYOUT.pushFloat(1);
 	}
 
+	private final Object dataLock = new Object();
+
 	private final TileMap owner;
 
 	private int highestLocation;
@@ -42,14 +44,13 @@ public class TileMapChunk {
 
 	private boolean dataNotSynced = true;
 
+	private volatile boolean isReadyToDraw = false;
+
 	private VertexArray vertexArray;
 	private IndexBuffer indexBuffer;
 	private VertexBuffer vertexBuffer;
 	private float[] vertexData = new float[0];
 	private int[] indexData = new int[0];
-
-	private int vertexDataHash;
-	private int indexDataHash;
 
 	public TileMapChunk(TileMap owner) {
 		this.owner = owner;
@@ -110,38 +111,43 @@ public class TileMapChunk {
 		return this.indexData;
 	}
 
-	private boolean syncFinished = true;
-
 	private void syncData() {
 		this.dataNotSynced = false;
 
+
 		new Thread(() -> {
-			syncFinished = false;
-			float[] vertexData = new float[highestLocation * 4 * 5];
+			float[] newVertexData = new float[highestLocation * 4 * 5];
 			List<float[]> vertexDataPoints = this.vertexTileData.values().stream().toList();
 			for (int i = 0; i < vertexDataPoints.size(); i++) {
-				int id = i * 4 * 5;
-				float[] data = vertexDataPoints.get(i);
-				System.arraycopy(data, 0, vertexData, id, 4 * 5);
+				System.arraycopy(vertexDataPoints.get(i), 0, newVertexData, i * 4 * 5, 4 * 5);
 			}
 
+			int[] newIndexData = new int[highestLocation * 6];
 			List<int[]> indexDataPoints = this.indexTileData.values().stream().toList();
-			int[] indexData = new int[highestLocation * 6];
 			for (int i = 0; i < indexDataPoints.size(); i++) {
-				int id = i * 6;
-				int[] data = indexDataPoints.get(i);
-				System.arraycopy(data, 0, indexData, id, 6);
+				System.arraycopy(indexDataPoints.get(i), 0, newIndexData, i * 6, 6);
 			}
 
-			this.vertexData = vertexData;
-			this.indexData = indexData;
-			syncFinished = true;
+			// Pass result to OpenGL thread
+			Main.glQueue.add(() -> {
+				synchronized (dataLock) {
+					this.vertexData = newVertexData;
+					this.indexData = newIndexData;
+
+					this.vertexArray = new VertexArray();
+					this.vertexBuffer = new VertexBuffer(newVertexData);
+					this.vertexArray.addBuffer(this.vertexBuffer, VERTEX_BUFFER_LAYOUT);
+					this.indexBuffer = new IndexBuffer(newIndexData);
+					this.isReadyToDraw = true;
+				}
+			});
 		}).start();
 	}
 
 	public void draw(Vector3f pos) {
 		if (this.owner == null) {
 			Main.LOGGER.error("TileMapChunk has no Owner");
+			return;
 		}
 		if (this.owner.tileSet == null) {
 			Main.LOGGER.error("TileSet is null");
@@ -163,21 +169,18 @@ public class TileMapChunk {
 			gridSizeUniform.set(texture.gridSize());
 		}
 
-		int vertexHash = Arrays.hashCode(vertexData());
-		int indexHash = Arrays.hashCode(indexData());
-
-		if (this.vertexDataHash != vertexHash || this.indexDataHash != indexHash) {
-			this.vertexDataHash = vertexHash;
-			this.indexDataHash = indexHash;
-
-			if (this.syncFinished) {
-				this.vertexBuffer = new VertexBuffer(vertexData);
-				this.vertexArray.addBuffer(this.vertexBuffer, VERTEX_BUFFER_LAYOUT);
-
-				this.indexBuffer = new IndexBuffer(indexData);
-			}
+		if (this.dataNotSynced) {
+			vertexData();
+			indexData();
 		}
 
-		Renderer.instance().draw(this.vertexArray, this.indexBuffer, this.owner.tileSet.material);
+		synchronized (dataLock) {
+			if (!this.isReadyToDraw) {
+				Main.LOGGER.warn("TileMapChunk buffers not ready — skipping draw.");
+				return;
+			}
+
+			Renderer.instance().draw(this.vertexArray, this.indexBuffer, this.owner.tileSet.material);
+		}
 	}
 }
