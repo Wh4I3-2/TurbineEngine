@@ -5,6 +5,7 @@ import imgui.gl3.ImGuiImplGl3;
 import imgui.glfw.ImGuiImplGlfw;
 import me.wh4i3.turbine.gamedata.Scene;
 import me.wh4i3.turbine.gamedata.gameobject.TileMap;
+import me.wh4i3.turbine.gamedata.tilemap.TileMapChunk;
 import me.wh4i3.turbine.input.Input;
 import me.wh4i3.turbine.input.InputKey;
 import me.wh4i3.turbine.input.event.InputScrollEvent;
@@ -28,9 +29,7 @@ import org.lwjgl.system.MemoryUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.Queue;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -113,12 +112,12 @@ public class Main {
 		instance().init();
 
 		instance().scene = new Scene(new TileMap() {
-			private int tick = 0;
-			private int x = 0;
 			private Vector3f translation;
 
 			@Override
 			public void ready() {
+				this.chunkSize = new Vector2i(64);
+
 				translation = new Vector3f(0.0f, 0.0f, -56.0f);
 
 				this.z = -1;
@@ -126,12 +125,6 @@ public class Main {
 				this.tileSet.textures = List.of(
 						new AtlasTexture(ResourceKey.withDefaultNamespace("sheet.png"), new Vector2i(16))
 				);
-
-				for (int y = 0; y < 100; y++) {
-					int tileX = Math.round(new Random().nextFloat() * 15);
-					int tileY = Math.round(new Random().nextFloat() * 15);
-					this.setTile(new Vector2i(x, y), new Tile(0, new Vector2i(tileX, tileY)));
-				}
 
 				Input.addEventListener(InputScrollEvent.class, event -> {
 					translation.z += (float)event.y;
@@ -141,6 +134,7 @@ public class Main {
 			@Override
 			public void update() {
 				super.update();
+
 				Vector2f input = Input.vector(new InputKey(GLFW_KEY_A), new InputKey(GLFW_KEY_D), new InputKey(GLFW_KEY_S), new InputKey(GLFW_KEY_W));
 
 				if (input.length() != 0.0f) {
@@ -150,21 +144,31 @@ public class Main {
 				Vector2f moveVector = new Vector2f(input).mul(Input.pressed(new InputKey(GLFW_KEY_LEFT_SHIFT)) ? 1.5f : 0.5f);
 
 				translation.add(moveVector.x, moveVector.y, 0.0f);
+				Renderer.instance().subPixelView = new Vector2f(translation.x, translation.y).sub(new Vector2f(translation.x, translation.y).floor());
 				Renderer.instance().viewMatrix = new Matrix4f().identity().translate(new Vector3f(translation).floor());
+			}
 
-				if (tick % 2 == 0) {
-					x++;
-					for (int y = 0; y < 100; y++) {
-						int tileX = Math.round(new Random().nextFloat() * 15);
-						int tileY = Math.round(new Random().nextFloat() * 15);
-						this.setTile(new Vector2i(x, y), new Tile(0, new Vector2i(tileX, tileY)));
+			@Override
+			public void enterEmptyChunk(Vector2i pos) {
+				Vector2i base = new Vector2i(pos).mul(this.chunkSize);
+				TileMapChunk chunk = new TileMapChunk(this);
+				this.chunks().put(pos, chunk);
+
+				Map<Vector2i, Tile> generated = new HashMap<>();
+
+				for (int x = 0; x < this.chunkSize.x; x++) {
+					for (int y = 0; y < this.chunkSize.y; y++) {
+						Vector2i localCell = new Vector2i(x, y);
+						Vector2i atlasCoord = new Vector2i(x, y); // Just using x, y for visual diversity
+						generated.put(localCell, new Tile(0, atlasCoord));
 					}
 				}
+
+				chunk.setTiles(generated); // batch write
 			}
 
 			@Override
 			public void physicsUpdate() {
-				tick++;
 			}
 		});
 

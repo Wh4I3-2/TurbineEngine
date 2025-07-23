@@ -14,7 +14,7 @@ import java.util.*;
 public abstract class TileMap extends GameObject {
 	public Vector2f tileSize;
 	public TileSet tileSet;
-	public Vector2i chunkSize = new Vector2i(64, 64);
+	public Vector2i chunkSize = new Vector2i(16);
 
 	private Map<Vector2i, TileMapChunk> chunks = new HashMap<>();
 
@@ -32,7 +32,7 @@ public abstract class TileMap extends GameObject {
 		Vector2f chunkPixelSize = new Vector2f(tileSize.x * chunkSize.x, tileSize.y * chunkSize.y);
 		viewMatrix = new Vector3f(viewMatrix.x / chunkPixelSize.x, viewMatrix.y / chunkPixelSize.y, viewMatrix.z);
 
-		Vector2f rounded = new Vector2f(Math.round(viewMatrix.x), Math.round(viewMatrix.y));
+		Vector2f rounded = new Vector2f((float)Math.floor(viewMatrix.x), (float)Math.floor(viewMatrix.y));
 		Vector2f subChunk = new Vector2f(rounded).sub(viewMatrix.x, viewMatrix.y);
 
 		return new Vector4f(rounded.x, rounded.y, subChunk.x, subChunk.y);
@@ -47,6 +47,10 @@ public abstract class TileMap extends GameObject {
 		tilesToUpdate.put(new Vector4i(localCell.x, localCell.y, chunkPos.x, chunkPos.y), tile);
 	}
 
+	public Map<Vector2i, TileMapChunk> chunks() {
+		return this.chunks;
+	}
+
 	@Override
 	public void update() {
 		for (Vector4i key : tilesToUpdate.keySet()) {
@@ -59,53 +63,47 @@ public abstract class TileMap extends GameObject {
 			}
 
 			TileMapChunk chunk = chunks.get(chunkPos);
-			chunk.setTile(localCell, tile);
+			chunk.setTileNoSync(localCell, tile);
+			chunk.dataNotSynced = true;
 		}
 		this.tilesToUpdate.clear();
 	}
 
+	public abstract void enterEmptyChunk(Vector2i pos);
+
 	@Override
 	public void draw() {
 		Vector4f viewMatrixChunk = viewMatrixChunk();
-		Vector2i chunkPos = new Vector2i((int) viewMatrixChunk.x, (int) viewMatrixChunk.y);
-		Vector2f subPos = new Vector2f(viewMatrixChunk.z, viewMatrixChunk.w);
+		Vector2i centerChunk = new Vector2i((int) viewMatrixChunk.x, (int) viewMatrixChunk.y);
 
-		List<Vector2i> chunkPositions = new ArrayList<>();
-		chunkPositions.add(chunkPos);
+		List<Vector2i> visibleChunks = getVisibleChunks(centerChunk);
 
-		if (subPos.x < 0) {
-			chunkPositions.add(new Vector2i(chunkPos.x + 1, chunkPos.y));
-			if (subPos.y < 0) {
-				chunkPositions.add(new Vector2i(chunkPos.x + 1, chunkPos.y + 1));
-			}
-			if (subPos.y > 0) {
-				chunkPositions.add(new Vector2i(chunkPos.x + 1, chunkPos.y - 1));
-			}
-		}
-		if (subPos.x > 0) {
-			chunkPositions.add(new Vector2i(chunkPos.x - 1, chunkPos.y));
-			if (subPos.y < 0) {
-				chunkPositions.add(new Vector2i(chunkPos.x - 1, chunkPos.y + 1));
-			}
-			if (subPos.y > 0) {
-				chunkPositions.add(new Vector2i(chunkPos.x - 1, chunkPos.y - 1));
-			}
-		}
-		if (subPos.y < 0) {
-			chunkPositions.add(new Vector2i(chunkPos.x, chunkPos.y + 1));
-		}
-		if (subPos.y > 0) {
-			chunkPositions.add(new Vector2i(chunkPos.x, chunkPos.y - 1));
-		}
-
-		for (Vector2i pos : chunkPositions) {
-			if (!chunks.containsKey(pos)) {
+		for (Vector2i chunkPos : visibleChunks) {
+			TileMapChunk chunk = chunks.get(chunkPos);
+			if (chunk == null) {
+				enterEmptyChunk(chunkPos); // populate on demand
 				continue;
 			}
 
-			TileMapChunk chunk = chunks.get(pos);
-			chunk.draw(new Vector3f(pos.x * chunkSize.x * tileSize.x, pos.y * chunkSize.y * tileSize.y, 0));
+			Vector3f chunkWorldPos = new Vector3f(chunkPos.x * chunkSize.x * tileSize.x,
+					chunkPos.y * chunkSize.y * tileSize.y,
+					0.0f);
+			chunk.draw(chunkWorldPos);
 		}
+	}
+
+	private List<Vector2i> getVisibleChunks(Vector2i center) {
+		int radius = 2;
+
+		List<Vector2i> chunks = new ArrayList<>(9);
+
+		for (int dx = -radius; dx <= radius; dx++) {
+			for (int dy = -radius; dy <= radius; dy++) {
+				chunks.add(new Vector2i(center.x + dx, center.y + dy));
+			}
+		}
+
+		return chunks;
 	}
 
 }

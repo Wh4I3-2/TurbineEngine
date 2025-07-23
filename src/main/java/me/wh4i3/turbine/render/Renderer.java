@@ -7,6 +7,7 @@ import me.wh4i3.turbine.render.Buffer.VertexArray;
 import me.wh4i3.turbine.render.shader.Shader;
 import me.wh4i3.turbine.render.shader.material.AbstractMaterial;
 import org.joml.Matrix4f;
+import org.joml.Vector2f;
 
 
 import static org.lwjgl.opengl.GL45C.*;
@@ -32,8 +33,10 @@ public class Renderer {
 	//public Matrix4f projectionMatrix = new Matrix4f().perspective(90.0f, 16.0f/9.0f, 0.0001f, 1000.0f);
 
 	public Matrix4f viewMatrix = new Matrix4f().identity();
+	public Vector2f subPixelView = new Vector2f(0);
 
 	public Matrix4f modelMatrix = new Matrix4f().identity();
+
 
 	public Matrix4f mvp() {
 		return new Matrix4f(projectionMatrix).mul(viewMatrix).mul(modelMatrix);

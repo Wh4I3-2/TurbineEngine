@@ -16,10 +16,7 @@ import org.joml.Vector2f;
 import org.joml.Vector2i;
 import org.joml.Vector3f;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class TileMapChunk {
 	public static final VertexBufferLayout VERTEX_BUFFER_LAYOUT;
@@ -42,7 +39,7 @@ public class TileMapChunk {
 
 	private Map<Vector2i, Tile> tiles = new HashMap<>();
 
-	private boolean dataNotSynced = true;
+	public boolean dataNotSynced = true;
 
 	private volatile boolean isReadyToDraw = false;
 
@@ -60,6 +57,21 @@ public class TileMapChunk {
 	public void setTile(Vector2i cell, Tile tile) {
 		this.tiles.put(cell, tile);
 		setTileData(cell, tile);
+		this.dataNotSynced = true;
+	}
+
+	public void setTileNoSync(Vector2i cell, Tile tile) {
+		this.tiles.put(cell, tile);
+		setTileData(cell, tile);
+	}
+
+	public void setTiles(Map<Vector2i, Tile> tiles) {
+		for (Vector2i cell : tiles.keySet()) {
+			Tile tile = tiles.get(cell);
+			this.tiles.put(cell, tile);
+			setTileData(cell, tile);
+		}
+		this.dataNotSynced = true;
 	}
 
 	private void setTileData(Vector2i cell, Tile tile) {
@@ -67,7 +79,7 @@ public class TileMapChunk {
 		if (tileDataLocation.containsKey(cell)) {
 			location = tileDataLocation.get(cell);
 		} else {
-			location = ++highestLocation;
+			location = highestLocation++;
 			tileDataLocation.put(cell, location);
 		}
 
@@ -81,7 +93,7 @@ public class TileMapChunk {
 
 		Vector2f gridSize = new Vector2f(texture.gridSize());
 
-		Vector2f normalPos = new Vector2f(tile.atlasCoord).div(gridSize);
+		Vector2f normalPos = new Vector2f(tile.atlasCoord.x % texture.gridSize().x, tile.atlasCoord.y % texture.gridSize().y).div(gridSize);
 		Vector2f atlasTileSize = new Vector2f(1.0f).div(gridSize);
 
 		Vector2f tileSize = this.owner.tileSize;
@@ -93,8 +105,6 @@ public class TileMapChunk {
 				offset.x + tileSize.x, offset.y + tileSize.y, normalPos.x + atlasTileSize.x, normalPos.y + atlasTileSize.y, tile.textureSlot,
 				offset.x,              offset.y + tileSize.y, normalPos.x,                   normalPos.y + atlasTileSize.y, tile.textureSlot,
 		});
-
-		this.dataNotSynced = true;
 	}
 
 	public float[] vertexData() {
@@ -114,18 +124,30 @@ public class TileMapChunk {
 	private void syncData() {
 		this.dataNotSynced = false;
 
-
 		new Thread(() -> {
-			float[] newVertexData = new float[highestLocation * 4 * 5];
-			List<float[]> vertexDataPoints = this.vertexTileData.values().stream().toList();
-			for (int i = 0; i < vertexDataPoints.size(); i++) {
-				System.arraycopy(vertexDataPoints.get(i), 0, newVertexData, i * 4 * 5, 4 * 5);
-			}
+			List<Integer> sortedKeys = new ArrayList<>(vertexTileData.keySet());
 
-			int[] newIndexData = new int[highestLocation * 6];
-			List<int[]> indexDataPoints = this.indexTileData.values().stream().toList();
-			for (int i = 0; i < indexDataPoints.size(); i++) {
-				System.arraycopy(indexDataPoints.get(i), 0, newIndexData, i * 6, 6);
+			float[] newVertexData = new float[sortedKeys.size() * 4 * 5];
+			int[] newIndexData = new int[sortedKeys.size() * 6];
+
+			int vOffset = 0;
+			int iOffset = 0;
+
+			for (int i = 0; i < sortedKeys.size(); i++) {
+				int key = sortedKeys.get(i);
+				float[] vData = vertexTileData.get(key);
+
+				System.arraycopy(vData, 0, newVertexData, vOffset, vData.length);
+
+				int baseIndex = i * 4;
+				int[] indices = {
+						baseIndex, baseIndex + 1, baseIndex + 2,
+						baseIndex + 2, baseIndex + 3, baseIndex
+				};
+				System.arraycopy(indices, 0, newIndexData, iOffset, 6);
+
+				vOffset += 4 * 5;
+				iOffset += 6;
 			}
 
 			// Pass result to OpenGL thread
