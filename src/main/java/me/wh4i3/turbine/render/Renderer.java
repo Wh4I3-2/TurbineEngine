@@ -1,6 +1,7 @@
 package me.wh4i3.turbine.render;
 
 import me.wh4i3.turbine.Main;
+import me.wh4i3.turbine.Time;
 import me.wh4i3.turbine.gamedata.gameobject.GameObject;
 import me.wh4i3.turbine.render.Buffer.IndexBuffer;
 import me.wh4i3.turbine.render.Buffer.VertexArray;
@@ -8,12 +9,18 @@ import me.wh4i3.turbine.render.shader.Shader;
 import me.wh4i3.turbine.render.shader.material.AbstractMaterial;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
+import org.joml.Vector3f;
 
 
 import static org.lwjgl.opengl.GL45C.*;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
 public class Renderer {
+	public enum Projection {
+		ORTHOGRAPHIC,
+		PERSPECTIVE,
+	}
+
 	private static Renderer instance;
 
 	public static Renderer instance() {
@@ -24,22 +31,32 @@ public class Renderer {
 	};
 
 
-	public Matrix4f projectionMatrix = new Matrix4f().ortho(
-			0.0f, Window.VIEWPORT_WIDTH,
-			0.0f, Window.VIEWPORT_HEIGHT,
+
+	public Matrix4f orthoProjectionMatrix = new Matrix4f().ortho(
+			0.0f, Window.VIEWPORT_WIDTH + 2.0f,
+			0.0f, Window.VIEWPORT_HEIGHT + 2.0f,
 			0.001f, 1000.0f
 	);
 
-	//public Matrix4f projectionMatrix = new Matrix4f().perspective(90.0f, 16.0f/9.0f, 0.0001f, 1000.0f);
+
+	public Matrix4f perspectiveProjectionMatrix = new Matrix4f().perspective(90.0f, 16.0f/9.0f, 0.0001f, 1000.0f);
 
 	public Matrix4f viewMatrix = new Matrix4f().identity();
 	public Vector2f subPixelView = new Vector2f(0);
 
 	public Matrix4f modelMatrix = new Matrix4f().identity();
 
+	public Projection projection = Projection.ORTHOGRAPHIC;
+
+	public Matrix4f projectionMatrix() {
+		return switch (projection) {
+			case Projection.ORTHOGRAPHIC -> orthoProjectionMatrix;
+			case Projection.PERSPECTIVE -> perspectiveProjectionMatrix;
+		};
+	}
 
 	public Matrix4f mvp() {
-		return new Matrix4f(projectionMatrix).mul(viewMatrix).mul(modelMatrix);
+		return new Matrix4f(projectionMatrix()).mul(viewMatrix).mul(modelMatrix);
 	}
 
 	public void clear() {
@@ -50,7 +67,7 @@ public class Renderer {
 		Shader shader = material.shader();
 
 		if (shader.uniforms().containsKey("u_Time")) {
-			glUniform1f(shader.uniforms().get("u_Time"), ((float) Main.tick / Main.TPS) + Main.deltaTime());
+			glUniform1f(shader.uniforms().get("u_Time"), Time.time());
 		}
 
 		if (shader.uniforms().containsKey("u_MVP")) {
@@ -62,9 +79,11 @@ public class Renderer {
 		}
 	}
 
-	public void draw(VertexArray vertexArray, IndexBuffer indexBuffer, AbstractMaterial material) {
-		material.bind();
+	public void draw(VertexArray vertexArray, IndexBuffer indexBuffer, AbstractMaterial material, Vector3f pos) {
+		modelMatrix = new Matrix4f().translate(pos);
+
 		material.update();
+		material.bind();
 
 		updateCommonUniforms(material);
 
@@ -73,5 +92,8 @@ public class Renderer {
 
 		// DRAW CALL
 		glDrawElements(GL_TRIANGLES, indexBuffer.count(), indexBuffer.type(), NULL);
+	}
+	public void draw(VertexArray vertexArray, IndexBuffer indexBuffer, AbstractMaterial material) {
+		draw(vertexArray, indexBuffer, material, new Vector3f(0));
 	}
 }

@@ -6,6 +6,7 @@ uniform sampler2D u_Sampler;
 uniform float u_Time;
 uniform vec2 u_WindowSize;
 uniform vec2 u_ViewportSize;
+uniform vec2 u_SubPixel;
 
 in vec2 v_TexCoord;
 

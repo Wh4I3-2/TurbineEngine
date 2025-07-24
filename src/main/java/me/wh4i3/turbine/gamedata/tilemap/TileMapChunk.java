@@ -176,8 +176,6 @@ public class TileMapChunk {
 			return;
 		}
 
-		Renderer.instance().modelMatrix = new Matrix4f().translate(pos);
-
 		if (this.owner.tileSet.modulate != null) {
 			this.owner.tileSet.material.modulate = this.owner.tileSet.modulate;
 		}
@@ -198,11 +196,11 @@ public class TileMapChunk {
 
 		synchronized (dataLock) {
 			if (!this.isReadyToDraw) {
-				Main.LOGGER.warn("TileMapChunk buffers not ready — skipping draw.");
+				//Main.LOGGER.warn("TileMapChunk buffers not ready — skipping draw.");
 				return;
 			}
 
-			Renderer.instance().draw(this.vertexArray, this.indexBuffer, this.owner.tileSet.material);
+			Renderer.instance().draw(this.vertexArray, this.indexBuffer, this.owner.tileSet.material, pos);
 		}
 	}
 }

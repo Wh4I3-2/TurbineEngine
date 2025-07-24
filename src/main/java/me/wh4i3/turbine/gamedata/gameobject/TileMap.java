@@ -28,7 +28,7 @@ public abstract class TileMap extends GameObject {
 		Vector3f viewMatrix = new Vector3f(0.0f);
 		viewMatrix = Renderer.instance().viewMatrix.getTranslation(viewMatrix);
 		viewMatrix.mul(-1);
-		viewMatrix.add((float) Window.VIEWPORT_WIDTH / 2.0f, (float) Window.VIEWPORT_HEIGHT / 2.0f, 0.0f);
+		viewMatrix.add((float) (Window.VIEWPORT_WIDTH + 2) / 2.0f, (float) (Window.VIEWPORT_HEIGHT + 2) / 2.0f, 0.0f);
 		Vector2f chunkPixelSize = new Vector2f(tileSize.x * chunkSize.x, tileSize.y * chunkSize.y);
 		viewMatrix = new Vector3f(viewMatrix.x / chunkPixelSize.x, viewMatrix.y / chunkPixelSize.y, viewMatrix.z);
 
@@ -85,9 +85,9 @@ public abstract class TileMap extends GameObject {
 				continue;
 			}
 
-			Vector3f chunkWorldPos = new Vector3f(chunkPos.x * chunkSize.x * tileSize.x,
-					chunkPos.y * chunkSize.y * tileSize.y,
-					0.0f);
+			Vector3f chunkWorldPos = new Vector3f(chunkPos.x * chunkSize.x * tileSize.x + transform.position.x,
+					chunkPos.y * chunkSize.y * tileSize.y + transform.position.y,
+					this.z);
 			chunk.draw(chunkWorldPos);
 		}
 	}

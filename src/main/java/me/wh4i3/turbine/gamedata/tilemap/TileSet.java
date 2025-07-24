@@ -14,9 +14,12 @@ public class TileSet {
 	public Vector3f modulate;
 	public List<AtlasTexture> textures;
 
+	public List<Tile> tiles;
+
 	public final Material material = new Material(Shaders.instance().TILE_MAP, Map.ofEntries(
 			Map.entry("u_Tex0", new TextureUniform("u_Tex0", null)),
 			Map.entry("u_GridSize0", new Vector2iUniform("u_GridSize0", null))
 	));
+
 
 }
