@@ -35,19 +35,22 @@ public class VertexBufferLayout {
 		this(0);
 	}
 
-	public void pushFloat(int count) {
+	public VertexBufferLayout pushFloat(int count) {
 		elements.addLast(new VertexBufferElement(GL_FLOAT, count, false));
 		this.stride += count * VertexBufferElement.sizeOfType(GL_FLOAT);
+		return this;
 	}
 
-	public void pushInt(int count) {
+	public VertexBufferLayout pushInt(int count) {
 		elements.addLast(new VertexBufferElement(GL_UNSIGNED_INT, count, false));
 		this.stride += count * VertexBufferElement.sizeOfType(GL_UNSIGNED_INT);
+		return this;
 	}
 
-	public void pushByte(int count) {
+	public VertexBufferLayout pushByte(int count) {
 		elements.addLast(new VertexBufferElement(GL_UNSIGNED_BYTE, count, true));
 		this.stride += count * VertexBufferElement.sizeOfType(GL_UNSIGNED_BYTE);
+		return this;
 	}
 
 	public int stride() {

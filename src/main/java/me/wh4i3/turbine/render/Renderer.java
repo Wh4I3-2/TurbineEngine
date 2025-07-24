@@ -1,8 +1,8 @@
 package me.wh4i3.turbine.render;
 
-import me.wh4i3.turbine.Main;
 import me.wh4i3.turbine.Time;
-import me.wh4i3.turbine.gamedata.gameobject.GameObject;
+import me.wh4i3.turbine.gamedata.Transform;
+import me.wh4i3.turbine.gamedata.gameobject.Camera;
 import me.wh4i3.turbine.render.Buffer.IndexBuffer;
 import me.wh4i3.turbine.render.Buffer.VertexArray;
 import me.wh4i3.turbine.render.shader.Shader;
@@ -30,7 +30,7 @@ public class Renderer {
 		return instance;
 	};
 
-
+	private static Camera currentCamera;
 
 	public Matrix4f orthoProjectionMatrix = new Matrix4f().ortho(
 			0.0f, Window.VIEWPORT_WIDTH + 2.0f,
@@ -79,8 +79,16 @@ public class Renderer {
 		}
 	}
 
-	public void draw(VertexArray vertexArray, IndexBuffer indexBuffer, AbstractMaterial material, Vector3f pos) {
-		modelMatrix = new Matrix4f().translate(pos);
+	public void update() {
+		if (currentCamera != null) {
+			Transform transform = currentCamera.globalTransform();
+			viewMatrix = new Matrix4f().identity().translate(new Vector3f(transform.position.x, transform.position.y, 0.0f).floor()).translate(0.0f, 0.0f, currentCamera.zoom);
+			subPixelView = new Vector2f(transform.position.x, transform.position.y).sub(new Vector2f(transform.position.x, transform.position.y).floor());
+		}
+	}
+
+	public void draw(VertexArray vertexArray, IndexBuffer indexBuffer, AbstractMaterial material, Transform transform) {
+		modelMatrix = new Matrix4f().translate(transform.position.x, transform.position.y, 0.0f).scale(transform.scale.x, transform.scale.y, 1.0f).rotateX(transform.rotation);
 
 		material.update();
 		material.bind();
@@ -93,7 +101,24 @@ public class Renderer {
 		// DRAW CALL
 		glDrawElements(GL_TRIANGLES, indexBuffer.count(), indexBuffer.type(), NULL);
 	}
+
 	public void draw(VertexArray vertexArray, IndexBuffer indexBuffer, AbstractMaterial material) {
-		draw(vertexArray, indexBuffer, material, new Vector3f(0));
+		draw(vertexArray, indexBuffer, material, new Transform());
+	}
+
+	public void draw(RenderPrimitives.RenderPrimitive primitive, AbstractMaterial material) {
+		draw(primitive.vertexArray, primitive.indexBuffer, material);
+	}
+
+	public void draw(RenderPrimitives.RenderPrimitive primitive, AbstractMaterial material, Transform transform) {
+		draw(primitive.vertexArray, primitive.indexBuffer, material, transform);
+	}
+
+	public static Camera currentCamera() {
+		return currentCamera;
+	}
+
+	public static void makeCameraCurrent(Camera camera) {
+		currentCamera = camera;
 	}
 }

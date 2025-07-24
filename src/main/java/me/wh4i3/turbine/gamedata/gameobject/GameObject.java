@@ -1,15 +1,21 @@
 package me.wh4i3.turbine.gamedata.gameobject;
 
 import me.wh4i3.turbine.gamedata.Transform;
-import org.joml.Vector2f;
-import org.joml.Vector2i;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public abstract class GameObject {
 	public int z;
-	public Transform transform = new Transform();
+	public Transform localTransform = new Transform();
+	public Transform globalTransform() {
+		if (owner == null) {
+			return localTransform;
+		}
+		return owner.globalTransform().add(localTransform);
+	};
+
+	public GameObject owner;
 
 	private final List<GameObject> children = new ArrayList<>();
 
@@ -17,9 +23,11 @@ public abstract class GameObject {
 		return this.children;
 	}
 
-	public void addChild(GameObject go) {
+	public GameObject addChild(GameObject go) {
 		this.children.add(go);
+		go.owner = this;
 		go.ready();
+		return go;
 	}
 
 	public void removeChild(GameObject go) {

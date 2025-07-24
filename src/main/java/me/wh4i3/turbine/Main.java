@@ -5,7 +5,9 @@ import imgui.gl3.ImGuiImplGl3;
 import imgui.glfw.ImGuiImplGlfw;
 import me.wh4i3.turbine.game.InfiniteTileMap;
 import me.wh4i3.turbine.gamedata.Scene;
+import me.wh4i3.turbine.gamedata.gameobject.Camera;
 import me.wh4i3.turbine.gamedata.gameobject.GameObject;
+import me.wh4i3.turbine.gamedata.gameobject.Sprite;
 import me.wh4i3.turbine.input.Input;
 import me.wh4i3.turbine.input.InputKey;
 import me.wh4i3.turbine.input.event.InputEvent;
@@ -17,6 +19,8 @@ import me.wh4i3.turbine.render.Buffer.VertexBufferLayout;
 import me.wh4i3.turbine.render.Renderer;
 import me.wh4i3.turbine.render.Window;
 import me.wh4i3.turbine.render.shader.material.ViewportMaterial;
+import me.wh4i3.turbine.render.texture.Texture;
+import me.wh4i3.turbine.resource.ResourceKey;
 import org.joml.Math;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
@@ -94,18 +98,8 @@ public class Main {
 		instance().init();
 
 		instance().scene = new Scene(new GameObject() {
-			private Vector2f target;
-			private Vector3f current;
-
 			@Override
 			public void ready() {
-				target = new Vector2f(0);
-				current = new Vector3f(0.0f, 0.0f, -56.0f);
-
-				Input.addEventListener(InputScrollEvent.class, event -> {
-					current.z += (float)event.y * 2.0f;
-				});
-
 				Input.addEventListener(InputEvent.class, event -> {
 					if (event.key.key == GLFW_KEY_F3 && event.action == GLFW_RELEASE) {
 						debugEnabled = !debugEnabled;
@@ -123,30 +117,71 @@ public class Main {
 				this.addChild(new InfiniteTileMap(-50, new Vector3f(0.75f)));
 				this.addChild(new InfiniteTileMap(-75, new Vector3f(0.6125f)));
 				this.addChild(new InfiniteTileMap(-100, new Vector3f(0.5f)));
+
+				this.addChild(new Sprite() {
+					private Camera camera;
+
+					@Override
+					public void ready() {
+						Input.addEventListener(InputScrollEvent.class, event -> {
+							camera.zoom += (float)event.y * 2.0f;
+						});
+
+						this.texture = new Texture(ResourceKey.withDefaultNamespace("alien.png"));
+						this.z = 100;
+
+						this.camera = (Camera) this.addChild(new Camera() {
+							private Vector2f target;
+
+							@Override
+							public void ready() {
+								target = new Vector2f(0);
+							}
+
+							@Override
+							public void update() {
+								Vector2f input = Input.vector(new InputKey(GLFW_KEY_A), new InputKey(GLFW_KEY_D), new InputKey(GLFW_KEY_S), new InputKey(GLFW_KEY_W));
+
+								if (input.length() != 0.0f) {
+									input = input.normalize();
+								}
+
+								float delta = Time.deltaTime();
+
+								float speed = Input.pressed(new InputKey(GLFW_KEY_LEFT_SHIFT)) ? 400.0f : 100.0f;
+
+								Vector2f moveVector = new Vector2f(input);
+								moveVector.mul(delta * speed);
+
+								target.add(moveVector.x, moveVector.y);
+
+								localTransform.position.x = Math.lerp(localTransform.position.x, Math.floor(target.x), delta * 3.0f);
+								localTransform.position.y = Math.lerp(localTransform.position.y, Math.floor(target.y), delta * 3.0f);
+							}
+
+							@Override
+							public void physicsUpdate() {
+
+							}
+						});
+
+						this.camera.makeCurrent();
+					}
+
+					@Override
+					public void update() {
+
+					}
+
+					@Override
+					public void physicsUpdate() {
+
+					}
+				});
 			}
 
 			@Override
 			public void update() {
-				Vector2f input = Input.vector(new InputKey(GLFW_KEY_A), new InputKey(GLFW_KEY_D), new InputKey(GLFW_KEY_S), new InputKey(GLFW_KEY_W));
-
-				if (input.length() != 0.0f) {
-					input = input.normalize();
-				}
-
-				float delta = Time.deltaTime();
-
-				float speed = Input.pressed(new InputKey(GLFW_KEY_LEFT_SHIFT)) ? 400.0f : 100.0f;
-
-				Vector2f moveVector = new Vector2f(input);
-				moveVector.mul(delta * speed);
-
-				target.add(moveVector.x, moveVector.y);
-
-				current.x = Math.lerp(current.x, Math.floor(target.x), delta * 3.0f);
-				current.y = Math.lerp(current.y, Math.floor(target.y), delta * 3.0f);
-
-				Renderer.instance().subPixelView = new Vector2f(current.x, current.y).sub(new Vector2f(current.x, current.y).floor());
-				Renderer.instance().viewMatrix = new Matrix4f().identity().translate(new Vector3f(current).floor());
 			}
 
 			@Override
@@ -222,6 +257,7 @@ public class Main {
 
 			Renderer.instance().clear();
 			instance().scene.update();
+			Renderer.instance().update();
 			instance().scene.draw();
 
 

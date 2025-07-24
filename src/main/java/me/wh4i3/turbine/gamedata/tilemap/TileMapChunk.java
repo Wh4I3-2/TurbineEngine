@@ -1,6 +1,7 @@
 package me.wh4i3.turbine.gamedata.tilemap;
 
 import me.wh4i3.turbine.Main;
+import me.wh4i3.turbine.gamedata.Transform;
 import me.wh4i3.turbine.gamedata.gameobject.TileMap;
 import me.wh4i3.turbine.render.Buffer.IndexBuffer;
 import me.wh4i3.turbine.render.Buffer.VertexArray;
@@ -200,7 +201,11 @@ public class TileMapChunk {
 				return;
 			}
 
-			Renderer.instance().draw(this.vertexArray, this.indexBuffer, this.owner.tileSet.material, pos);
+			Transform transform = new Transform(this.owner.globalTransform());
+			transform.position.x += pos.x;
+			transform.position.y += pos.y;
+
+			Renderer.instance().draw(this.vertexArray, this.indexBuffer, this.owner.tileSet.material, transform);
 		}
 	}
 }

@@ -85,8 +85,8 @@ public abstract class TileMap extends GameObject {
 				continue;
 			}
 
-			Vector3f chunkWorldPos = new Vector3f(chunkPos.x * chunkSize.x * tileSize.x + transform.position.x,
-					chunkPos.y * chunkSize.y * tileSize.y + transform.position.y,
+			Vector3f chunkWorldPos = new Vector3f(chunkPos.x * chunkSize.x * tileSize.x,
+					chunkPos.y * chunkSize.y * tileSize.y,
 					this.z);
 			chunk.draw(chunkWorldPos);
 		}
