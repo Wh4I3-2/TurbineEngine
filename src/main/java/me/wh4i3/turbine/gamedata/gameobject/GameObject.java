@@ -10,7 +10,7 @@ public abstract class GameObject {
 	public Transform localTransform = new Transform();
 	public Transform globalTransform() {
 		if (owner == null) {
-			return localTransform;
+			return new Transform(localTransform);
 		}
 		return owner.globalTransform().add(localTransform);
 	};

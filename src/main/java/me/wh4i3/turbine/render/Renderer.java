@@ -81,9 +81,10 @@ public class Renderer {
 
 	public void update() {
 		if (currentCamera != null) {
-			Transform transform = currentCamera.globalTransform();
-			viewMatrix = new Matrix4f().identity().translate(new Vector3f(transform.position.x, transform.position.y, 0.0f).floor()).translate(0.0f, 0.0f, currentCamera.zoom);
-			subPixelView = new Vector2f(transform.position.x, transform.position.y).sub(new Vector2f(transform.position.x, transform.position.y).floor());
+			Transform transform = new Transform(currentCamera.globalTransform());
+			transform.position.sub(new Vector2f(Window.VIEWPORT_WIDTH, Window.VIEWPORT_HEIGHT).div(2));
+			viewMatrix = new Matrix4f().identity().translate(new Vector3f(-transform.position.x, -transform.position.y, 0.0f).floor()).translate(0.0f, 0.0f, currentCamera.zoom);
+			subPixelView = new Vector2f(-transform.position.x, -transform.position.y).sub(new Vector2f(-transform.position.x, -transform.position.y).floor());
 		}
 	}
 

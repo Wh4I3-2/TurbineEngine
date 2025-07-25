@@ -14,6 +14,8 @@ public abstract class Sprite extends GameObject {
 		Transform transform = new Transform(globalTransform());
 		transform.scale.x *= texture.width();
 		transform.scale.y *= texture.height();
+		transform.position.x -= transform.scale.x / 2.0f;
+		transform.position.y -= transform.scale.y / 2.0f;
 		Renderer.instance().draw(RenderPrimitives.TEXTURE_QUAD, new TextureMaterial(texture), transform);
 	}
 }

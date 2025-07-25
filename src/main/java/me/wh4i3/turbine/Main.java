@@ -119,6 +119,7 @@ public class Main {
 				this.addChild(new InfiniteTileMap(-100, new Vector3f(0.5f)));
 
 				this.addChild(new Sprite() {
+					private Vector2f target;
 					private Camera camera;
 
 					@Override
@@ -127,36 +128,19 @@ public class Main {
 							camera.zoom += (float)event.y * 2.0f;
 						});
 
-						this.texture = new Texture(ResourceKey.withDefaultNamespace("alien.png"));
+						this.texture = new Texture(ResourceKey.withDefaultNamespace("goober.png"));
 						this.z = 100;
 
-						this.camera = (Camera) this.addChild(new Camera() {
-							private Vector2f target;
+						target = new Vector2f(0);
 
+						this.camera = (Camera) this.addChild(new Camera() {
 							@Override
 							public void ready() {
-								target = new Vector2f(0);
+								this.zoom = -200.0f;
 							}
 
 							@Override
 							public void update() {
-								Vector2f input = Input.vector(new InputKey(GLFW_KEY_A), new InputKey(GLFW_KEY_D), new InputKey(GLFW_KEY_S), new InputKey(GLFW_KEY_W));
-
-								if (input.length() != 0.0f) {
-									input = input.normalize();
-								}
-
-								float delta = Time.deltaTime();
-
-								float speed = Input.pressed(new InputKey(GLFW_KEY_LEFT_SHIFT)) ? 400.0f : 100.0f;
-
-								Vector2f moveVector = new Vector2f(input);
-								moveVector.mul(delta * speed);
-
-								target.add(moveVector.x, moveVector.y);
-
-								localTransform.position.x = Math.lerp(localTransform.position.x, Math.floor(target.x), delta * 3.0f);
-								localTransform.position.y = Math.lerp(localTransform.position.y, Math.floor(target.y), delta * 3.0f);
 							}
 
 							@Override
@@ -168,9 +152,43 @@ public class Main {
 						this.camera.makeCurrent();
 					}
 
+					float x;
+					float y;
+					float targetScaleX = 1.0f;
+
 					@Override
 					public void update() {
+						float delta = Time.deltaTime();
 
+						Vector2f input = Input.vector(new InputKey(GLFW_KEY_D), new InputKey(GLFW_KEY_A), new InputKey(GLFW_KEY_W), new InputKey(GLFW_KEY_S));
+
+						if (input.x > 0.0) {
+							targetScaleX = 1.0f;
+						}
+						if (input.x < 0.0) {
+							targetScaleX = -1.0f;
+						}
+
+						this.localTransform.scale.x = Math.lerp(this.localTransform.scale.x, targetScaleX, delta * 8.0f);
+
+						if (input.length() != 0.0f) {
+							input = input.normalize();
+						}
+
+						float speed = Input.pressed(new InputKey(GLFW_KEY_LEFT_SHIFT)) ? 400.0f : 100.0f;
+
+						Vector2f moveVector = new Vector2f(input);
+						moveVector.mul(delta * speed);
+
+						target.add(moveVector.x, moveVector.y);
+
+						x = Math.lerp(x, Math.floor(target.x), delta * 3.0f);
+						y = Math.lerp(y, Math.floor(target.y), delta * 3.0f);
+
+						localTransform.position.x = Math.floor(x);
+						localTransform.position.y = Math.floor(y);
+
+						this.camera.localTransform.position = new Vector2f(x -Math.floor(x), y - Math.floor(y));
 					}
 
 					@Override
@@ -239,10 +257,11 @@ public class Main {
 
 		final ViewportMaterial viewportMaterial = new ViewportMaterial();
 
-		LOGGER.info(
-				Thread.currentThread().getName());
+		while (!glfwWindowShouldClose(instance().window.window())) {
+			if (!Time.shouldUpdateFrame()) {
+				continue;
+			}
 
-		while (!glfwWindowShouldClose(instance().window.window())){
 			Time.updateFrame();
 
 			glBindFramebuffer(GL_FRAMEBUFFER, instance().window.frameBuffer());

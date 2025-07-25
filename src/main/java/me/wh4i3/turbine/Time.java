@@ -3,6 +3,7 @@ package me.wh4i3.turbine;
 public class Time {
 
 	public static final int TPS = 20;
+	public static final int FPS = 60;
 
 	private static long tick;
 	private static long lastTickTime;
@@ -11,6 +12,7 @@ public class Time {
 	private static long frame;
 	private static long lastFrameTime;
 	private static float deltaFrame;
+	private static long fpsCapTime;
 
 	public static void updateTick() {
 		long currentTime = System.nanoTime();
@@ -24,6 +26,15 @@ public class Time {
 		deltaFrame = (currentTime - lastFrameTime) / 1_000_000_000f;
 		lastFrameTime = currentTime;
 		frame++;
+	}
+
+	public static boolean shouldUpdateFrame() {
+		float fpsCapTimeSeconds = (System.nanoTime() - fpsCapTime) / 1_000_000_000f;
+		if (fpsCapTimeSeconds < 1.0f / FPS) {
+			return false;
+		}
+		fpsCapTime = System.nanoTime();
+		return true;
 	}
 
 	public static float tps() {
